@@ -226,9 +226,10 @@ with tab2:
         st.dataframe(df_to_display)
     
     elif not selected_stations:
-      st.warning('Silakan pilih setidaknya satu stasiun untuk ditampilkan.')
+      st.warning('Pilih setidaknya satu stasiun.')
+
     elif not selected_pollutants:
-      st.warning('Silakan pilih setidaknya satu jenis polutan untuk ditampilkan.')
+      st.warning('Pilih setidaknya satu jenis polutan.')
 
   with col2:
     st.subheader('Tren Konsentrasi Polutan') #st.markdown('#### Tren Konsentrasi Polutan')
@@ -269,9 +270,10 @@ with tab2:
       plt.tight_layout()
       st.pyplot(fig)
     elif not selected_stations:
-      st.warning('Silakan pilih setidaknya satu stasiun.')
+      st.warning('Pilih setidaknya satu stasiun.')
+
     elif not selected_pollutants:
-      st.warning('Silakan pilih setidaknya satu jenis polutan.')
+      st.warning('Pilih setidaknya satu jenis polutan.')
 
 with tab3:
   # st.subheader(':clock3: Diurnal Patterns')

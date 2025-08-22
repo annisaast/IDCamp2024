@@ -29,7 +29,6 @@ max_date = all_df['datetime'].max()
 st.set_page_config(layout='wide')
 
 # Filter Tanggal, Statiun, Polutan, dan Periode di Sidebar
-# Filter Tanggal, Statiun, Polutan, dan Periode di Sidebar
 with st.sidebar:
   st.sidebar.header('Date')
   start_date = st.date_input('Start Date', value=min_date)

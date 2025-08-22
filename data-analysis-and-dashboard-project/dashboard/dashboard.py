@@ -9,34 +9,9 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
+import emoji
 
 sns.set_theme(style='dark')
-
-# Helper function yang dibutuhkan untuk menyiapkan berbagai dataframe
-def create_bystation_df(df):
-  numeric_parameters = df.groupby('station')[['PM2.5', 'PM10', 'SO2', 'NO2', 'CO', 'O3',
-                                      'TEMP', 'DEWP', 'PRES', 'RAIN', 'WSPM']].mean()
-  wd_mode = df.groupby('station')['wd'].agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
-  bystation_df = numeric_parameters.join(wd_mode).reset_index()
-  return bystation_df
-
-def create_daily_allstations_df(df):
-  df['datetime'] = pd.to_datetime(df['datetime'])
-  df['date'] = df['datetime'].dt.date
-  numeric_parameters = df.groupby('date')[['PM2.5', 'PM10', 'SO2', 'NO2', 'CO', 'O3',
-                                      'TEMP', 'DEWP', 'PRES', 'RAIN', 'WSPM']].mean()
-  wd_mode = df.groupby('date')['wd'].agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
-  daily_allstations_df = numeric_parameters.join(wd_mode).reset_index()
-  return daily_allstations_df
-
-def create_daily_bystation_df(df):
-  df['datetime'] = pd.to_datetime(df['datetime'])
-  df['date'] = df['datetime'].dt.date
-  numeric_parameters = df.groupby(['station', 'date'])[['PM2.5', 'PM10', 'SO2', 'NO2', 'CO', 'O3',
-                                                      'TEMP', 'DEWP', 'PRES', 'RAIN', 'WSPM']].mean()
-  wd_mode = df.groupby(['station', 'date'])['wd'].agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
-  daily_bystation_df = numeric_parameters.join(wd_mode).reset_index()
-  return daily_bystation_df
 
 all_df = pd.read_csv('dashboard/all_data.csv')
 
@@ -53,7 +28,8 @@ max_date = all_df['datetime'].max()
 
 st.set_page_config(layout='wide')
 
-# Informasi Kondisi Cuaca di Sidebar
+# Filter Tanggal, Statiun, Polutan, dan Periode di Sidebar
+# Filter Tanggal, Statiun, Polutan, dan Periode di Sidebar
 with st.sidebar:
   st.sidebar.header('Date')
   start_date = st.date_input('Start Date', value=min_date)
@@ -68,9 +44,9 @@ with st.sidebar:
     label_visibility = 'collapsed'
   )
   if 'All Stations' in choose_stations:
-    selected_stations = stations  # semua stasiun dipilih
+    selected_stations = stations  # semua polutan dipilih
   else:
-    selected_stations = choose_stations  # hanya stasiun yang dipilih
+    selected_stations = choose_stations  # hanya yang dipilih
 
   st.sidebar.header('Pollutant')
   pollutants = ['PM2.5', 'PM10', 'SO2', 'NO2', 'CO', 'O3']
@@ -83,11 +59,11 @@ with st.sidebar:
   if 'All Pollutants' in choose_pollutants:
     selected_pollutants = pollutants  # semua polutan dipilih
   else:
-    selected_pollutants = choose_pollutants  # hanya polutan yang dipilih
+    selected_pollutants = choose_pollutants  # hanya yang dipilih
 
-  st.sidebar.header('Day Type')
-  selected_day_type = st.selectbox(
-    label = 'Choose Day Type',
+  st.sidebar.header('Period')
+  selected_period = st.selectbox(
+    label = 'Choose Period',
     options = ['Daily', 'Weekly', 'Monthly'],
     index = 0,
     label_visibility = 'collapsed'
@@ -97,7 +73,7 @@ with st.sidebar:
     'Weekly': 'W',
     'Monthly': 'M'
   }
-  resample_freq = resample_map[selected_day_type]
+  resample_freq = resample_map[selected_period]
 
 if start_date > end_date:
   st.error('Tanggal Mulai tidak boleh lebih besar dari Tanggal Selesai!')
@@ -105,29 +81,61 @@ if start_date > end_date:
 main_df = all_df[(all_df['datetime'] >= str(start_date)) & 
                  (all_df['datetime'] <= str(end_date))]
 
-# Menyiapkan Berbagai DataFrame
-bystation_df = create_bystation_df(main_df)
-daily_allstations_df =create_daily_allstations_df(main_df)
-daily_bystation_df =create_daily_bystation_df(main_df)
-
 st.header('Air Quality Dashboard :fog:')
 
 st.subheader('Weather Condition')
+weather_df = main_df[main_df['station'].isin(selected_stations)].copy()
+
+avg_temp = weather_df['TEMP'].mean()
+avg_pres = weather_df['PRES'].mean()
+avg_dewp = weather_df['DEWP'].mean()
+avg_rain = weather_df['RAIN'].mean()
+avg_ws = weather_df['WSPM'].mean()
+
+def deg_to_compass(degree):
+  if pd.isna(degree):
+    return 'N/A'
+  directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+                'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+  idx = int((degree/22.5) + 0.5) % 16
+  return directions[idx]
+
+def centered_metric(label, value, unit=''):
+    st.markdown(f"""
+        <div style='
+          display: flex; 
+          flex-direction: column; 
+          align-items: center; 
+          font-family: "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+          text-align: center;
+          padding: 10px;
+        '>
+          <div style='font-size: 20px; font-weight: bold; margin-bottom: 4px;'>{label}</div>
+          <div style='font-size: 28px; font-weight: 500; text-align: center;'>{value} {unit}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+if 'wd_deg' in weather_df.columns and not weather_df['wd_deg'].dropna().empty:
+  mode_wd_deg = weather_df['wd_deg'].mode().iloc[0]
+  compass_wd = deg_to_compass(mode_wd_deg)
+else:
+  compass_wd = 'N/A'
+  
 col11, col12, col13 = st.columns(3)
 with col11:
-  st.markdown('<h4 style=\'text-align: center;\'>Temperature</h4>', unsafe_allow_html=True) #st.markdown('#### Temperature')
+  centered_metric(emoji.emojize('TEMP :thermometer:'), f'{avg_temp:.2f}', '°C')
 with col12:
-  st.markdown('<h4 style=\'text-align: center;\'>Pressure</h4>', unsafe_allow_html=True) #st.markdown('#### Pressure')
+  centered_metric(emoji.emojize('PRESS :cyclone:'), f'{avg_pres:.2f}', 'hPa')
 with col13:
-  st.markdown('<h4 style=\'text-align: center;\'>Dew Point Temperature</h4>', unsafe_allow_html=True) #st.markdown('#### Dew Point Temperature')
+  centered_metric(emoji.emojize('DEWP :droplet:'), f'{avg_dewp:.2f}', '°C')
 
 col21, col22, col23 = st.columns(3)
 with col21:
-  st.markdown('<h4 style=\'text-align: center;\'>Rain</h4>', unsafe_allow_html=True) #st.markdown('#### Rain')
+  centered_metric(emoji.emojize('RAIN :cloud_with_rain:'), f'{avg_rain:.2f}', 'mm')
 with col22:
-  st.markdown('<h4 style=\'text-align: center;\'>Wind Direction</h4>', unsafe_allow_html=True) #st.markdown('#### Wind Direction')
+  centered_metric(emoji.emojize('WIND DIRECTION :compass:'), compass_wd)
 with col23:
-  st.markdown('<h4 style=\'text-align: center;\'>Wind Speed</h4>', unsafe_allow_html=True) #st.markdown('#### Wind Speed')
+  centered_metric(emoji.emojize('WIND SPEED :dash:', language='alias'), f'{avg_ws:.2f}', 'm/s')
 
 tab1, tab2, tab3 = st.tabs([
     ':bar_chart: Air Quality Index (AQI)', 

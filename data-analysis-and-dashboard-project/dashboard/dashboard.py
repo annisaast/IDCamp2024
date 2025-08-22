@@ -13,7 +13,8 @@ import emoji
 
 sns.set_theme(style='dark')
 
-all_df = pd.read_csv('dashboard/all_data.csv')
+# all_df = pd.read_csv('dashboard/all_data.csv')
+all_df = pd.read_csv('dashboard/all_data.zip', compression='zip')
 
 # Menyortir dan memastikan kolom datetime
 datetime_columns = ['datetime']

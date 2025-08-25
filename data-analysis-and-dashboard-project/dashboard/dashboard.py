@@ -374,7 +374,7 @@ with tab3:
 
       # Format sumbu & tampilan
       ax.set_xlabel('Hour of Day', fontsize=16)
-      ax.set_ylabel('Average Concentration (µg/m³)', fontsize=16)
+      ax.set_ylabel('Total Average Concentration (µg/m³)', fontsize=16)
       ax.set_xticks(range(0, 24))
       ax.tick_params(axis='both', labelsize=14)
       ax.grid(True)
@@ -382,6 +382,31 @@ with tab3:
       plt.tight_layout()
       st.pyplot(fig)
 
+      # Heatmap: Hour vs Day of the Month
+      with st.expander('View Heatmap: Hour vs Day of the Month'):
+        if 'total_pollutant' not in filtered_df.columns:
+          if selected_pollutants_set == all_pollutants_set:
+            filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
+          elif len(selected_pollutants) > 1:
+            filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
+          else:
+            pollutant = selected_pollutants[0]
+            filtered_df['total_pollutant'] = filtered_df[pollutant]
+
+        filtered_df['day'] = filtered_df['datetime'].dt.day
+
+        heatmap_data = filtered_df.groupby(['day', 'hour'])['total_pollutant'].mean().unstack()
+
+        fig_hm, ax_hm = plt.subplots(figsize=(12, 6))
+        sns.heatmap(heatmap_data, cmap='YlOrRd', ax=ax_hm, linewidths=0.5, linecolor='white')
+        ax_hm.set_title('Heatmap: Total Average Concentration per Hour and Day of the Month', fontsize=18)
+        ax_hm.set_xlabel('Hour of Day', fontsize=16)
+        ax_hm.set_ylabel('Day of the Month', fontsize=16)
+        ax.tick_params(axis='both', labelsize=14)
+
+        plt.tight_layout()
+        st.pyplot(fig_hm)
+        
     elif not selected_stations:
       st.warning('Pilih setidaknya satu stasiun.')
 
@@ -428,7 +453,7 @@ with tab3:
         ax.set_title(f'Diurnal Pattern of {pollutant} - Weekday vs Weekend', fontsize=18)
 
       ax.set_xlabel('Hour of Day', fontsize=16)
-      ax.set_ylabel('Average Concentration (µg/m³)', fontsize=16)
+      ax.set_ylabel('Total Average Concentration (µg/m³)', fontsize=16)
       ax.set_xticks(range(0, 24))
       ax.tick_params(axis='both', labelsize=14)
       ax.grid(True)
@@ -436,7 +461,40 @@ with tab3:
       
       plt.tight_layout()
       st.pyplot(fig)
+    
+      # Heatmap: Jam vs Nama Hari
+      with st.expander('View Heatmap: Hour vs Day Name'):
+        if 'total_pollutant' not in filtered_df.columns:
+          if selected_pollutants_set == all_pollutants_set:
+            filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
+          elif len(selected_pollutants) > 1:
+            filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
+          else:
+            pollutant = selected_pollutants[0]
+            filtered_df['total_pollutant'] = filtered_df[pollutant]
 
+        filtered_df['day_name'] = filtered_df['datetime'].dt.day_name()
+
+        ordered_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+        heatmap_data = (
+          filtered_df
+          .groupby(['day_name', 'hour'])['total_pollutant']
+          .mean()
+          .unstack()
+          .reindex(ordered_days)
+        )
+
+        fig_hm, ax_hm = plt.subplots(figsize=(12, 6))
+        sns.heatmap(heatmap_data, cmap='YlOrRd', ax=ax_hm, linewidths=0.5, linecolor='white')
+        ax_hm.set_title('Heatmap: Total Average Concentration per Hour and Day Name', fontsize=18)
+        ax_hm.set_xlabel('Hour of Day', fontsize=16)
+        ax_hm.set_ylabel('Day Name', fontsize=16)
+        ax.tick_params(axis='both', labelsize=14)
+
+        plt.tight_layout()
+        st.pyplot(fig_hm)
+        
     elif not selected_stations:
       st.warning('Pilih setidaknya satu stasiun.')
 

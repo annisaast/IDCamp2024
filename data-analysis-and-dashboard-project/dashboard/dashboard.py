@@ -161,7 +161,7 @@ with tab1:
   if selected_period == 'Hourly':
     title_label = f'{selected_period} Air Quality Index (AQI) Trend ({start_date.strftime('%d %b %Y')})'
   else:
-    tititle_label = f'{selected_period} Air Quality Index (AQI) Trend ({start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')})'
+    title_label = f'{selected_period} Air Quality Index (AQI) Trend ({start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')})'
   
   with col1:
     st.subheader('AQI Trend') #st.markdown('#### AQI Trend')

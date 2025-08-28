@@ -1,16 +1,9 @@
 import os
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import seaborn as sns
-import plotly.express as px
-import calmap
 import streamlit as st
-import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output
-import plotly.graph_objs as go
 import emoji
 
 sns.set_theme(style='dark')
@@ -81,7 +74,7 @@ with st.sidebar:
   resample_freq = resample_map[selected_period]
 
 if start_date > end_date:
-  st.error('Oops! Start Date can't be later than the End Date.')
+  st.error("Oops! Start Date can't be later than the End Date.")
 
 main_df = all_df[(all_df['datetime'].dt.date >= start_date) &
                  (all_df['datetime'].dt.date <= end_date)]
@@ -106,8 +99,8 @@ def deg_to_compass(degree):
   return directions[idx]
 
 def centered_metric(label, value, unit=''):
-    st.markdown(f"""
-        <div style='
+  st.markdown(f"""
+          <div style='
           display: flex; 
           flex-direction: column; 
           align-items: center; 

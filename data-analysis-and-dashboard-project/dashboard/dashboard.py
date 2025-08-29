@@ -165,12 +165,12 @@ with tab1:
       x_label = 'Date and Time'
 
       if selected_period == 'Hourly' and start_date == end_date:
-        title_label = f'{selected_period} AQI Trend - {start_date.strftime('%d %b %Y')}'
+        title_label = f'{selected_period} AQI Trend - {start_date}'
       else:
-        title_label = f'{selected_period} AQI Trend - {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}'
+        title_label = f'{selected_period} AQI Trend - {start_date} to {end_date}'
         
       fig, ax = plt.subplots(figsize=(10,6))
-      ax.plot(aqi_resampled.index, aqi_resampled, color='red', linewidth=1.5)
+      ax.plot(aqi_resampled.index, aqi_resampled, color='royalblue', linewidth=1.5)
       ax.set_title(title_label, fontsize=18)
       ax.set_xlabel(x_label, fontsize=16)
       ax.set_ylabel('AQI Value', fontsize=16)
@@ -278,9 +278,9 @@ with tab2:
       x_label = 'Date and Time'
       
       if selected_period == 'Hourly' and start_date == end_date:
-        title_label = f'Pollutant Concentration Trend - {selected_period}, {start_date.strftime('%d %b %Y')}'
+        title_label = f'Pollutant Concentration Trend - {selected_period}, {start_date}'
       else:
-        title_label = f'Pollutant Concentration Trend - {selected_period}, {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}'
+        title_label = f'Pollutant Concentration Trend - {selected_period}, {start_date} to {end_date}'
 
       pollutant_resampled_df['total_average'] = pollutant_resampled_df.sum(axis=1)
 
@@ -294,7 +294,7 @@ with tab2:
           pollutant_resampled_df.index, 
           pollutant_resampled_df['total_average'], 
           label='All Pollutants', 
-          color='black', 
+          color='darkred', 
           linewidth=2.5)
       else:
         label = 'Selected Pollutants' if len(selected_pollutants) > 1 else f'Tren {selected_pollutants[0]}'
@@ -302,7 +302,7 @@ with tab2:
           pollutant_resampled_df.index, 
           pollutant_resampled_df['total_average'], 
           label=label, 
-          color='blue', 
+          color='crimson', 
           linewidth=2.5)
 
       ax.set_title(title_label, fontsize=18)

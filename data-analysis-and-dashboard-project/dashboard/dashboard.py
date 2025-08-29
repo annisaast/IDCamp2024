@@ -213,7 +213,7 @@ with tab1:
       fig, ax = plt.subplots(figsize=(10,6))
       bars = ax.bar(kategori_labels, kategori_counts, color=colors)
       ax.set_title(f'AQI Category Distribution - {selected_period}', fontsize=18)
-      ax.set_xlabel('AQI Value', fontsize=16)
+      ax.set_xlabel('AQI Value Range', fontsize=16)
       ax.set_ylabel('Data Count', fontsize=16)
       ax.tick_params(axis='both', labelsize=14)
       ax.grid(axis='y', linestyle='--', alpha=0.5)

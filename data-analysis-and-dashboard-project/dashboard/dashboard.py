@@ -8,7 +8,7 @@ import emoji
 
 sns.set_theme(style='dark')
 
-base_dir = os.path.dirname(__file__)
+base_dir = os.path.dirname(__file__)  # folder tempat dashboard.py berada
 zip_path = os.path.join(base_dir, 'all_data.zip')
 
 all_df = pd.read_csv(zip_path, compression='zip')
@@ -74,10 +74,18 @@ with st.sidebar:
   resample_freq = resample_map[selected_period]
 
 if start_date > end_date:
-  st.error("Oops! Start Date can't be later than the End Date.")
+  st.error(":x: Oops! Start Date can't be later than the End Date.")
 
 main_df = all_df[(all_df['datetime'].dt.date >= start_date) &
                  (all_df['datetime'].dt.date <= end_date)]
+
+invalid_station = not selected_stations
+invalid_pollutant = not selected_pollutants
+
+if invalid_station:
+  st.warning(':warning: Please select at least one station to continue.')
+if invalid_pollutant:
+  st.warning(':warning: Please select at least one pollutant type.')
 
 st.header('Air Quality Dashboard :mag:')
 
@@ -118,7 +126,7 @@ if 'wd_deg' in weather_df.columns and not weather_df['wd_deg'].dropna().empty:
   compass_wd = deg_to_compass(mode_wd_deg)
 else:
   compass_wd = 'N/A'
-  
+
 col11, col12, col13 = st.columns(3)
 with col11:
   centered_metric(emoji.emojize('TEMP :thermometer:'), f'{avg_temp:.2f}', '°C')
@@ -136,88 +144,96 @@ with col23:
   centered_metric(emoji.emojize('WIND SPEED :dash:', language='alias'), f'{avg_ws:.2f}', 'm/s')
 
 tab1, tab2, tab3 = st.tabs([
-    ':bar_chart: Air Quality Index (AQI)', 
-    ':chart_with_upwards_trend: Pollutant Trends', 
-    ':clock3: Diurnal Patterns'
+  ':bar_chart: Air Quality Index (AQI)', 
+  ':chart_with_upwards_trend: Pollutant Trends', 
+  ':clock3: Diurnal Patterns'
 ])
 
 with tab1:
   # st.subheader(':bar_chart: Air Quality Index (AQI)')
   col1, col2 = st.columns(2)
-
-  filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
-  filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
-  filtered_df.set_index('datetime', inplace=True)
-
-  aqi_resampled = filtered_df['AQI_CN'].resample(resample_freq).max()
-  x_label = 'Date and Time'
-  if selected_period == 'Hourly':
-    title_label = f'{selected_period} Air Quality Index (AQI) Trend ({start_date.strftime('%d %b %Y')})'
-  else:
-    title_label = f'{selected_period} Air Quality Index (AQI) Trend ({start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')})'
   
   with col1:
     st.subheader('AQI Trend') #st.markdown('#### AQI Trend')
-    fig, ax = plt.subplots(figsize=(10,6))
-    ax.plot(aqi_resampled.index, aqi_resampled, color='red', linewidth=1.5)
-    ax.set_title(title_label, fontsize=18)
-    ax.set_xlabel(x_label, fontsize=16)
-    ax.set_ylabel('AQI Value', fontsize=16)
-    ax.tick_params(axis='both', labelsize=14)
-    ax.grid(True)
+    
+    if not invalid_station and not invalid_pollutant:
+      filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
+      filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
+      filtered_df.set_index('datetime', inplace=True)
 
-    plt.tight_layout()
-    st.pyplot(fig)
+      aqi_resampled = filtered_df['AQI_CN'].resample(resample_freq).max()
+      x_label = 'Date and Time'
+
+      if selected_period == 'Hourly' and start_date == end_date:
+        title_label = f'{selected_period} AQI Trend - {start_date.strftime('%d %b %Y')}'
+      else:
+        title_label = f'{selected_period} AQI Trend - {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}'
+        
+      fig, ax = plt.subplots(figsize=(10,6))
+      ax.plot(aqi_resampled.index, aqi_resampled, color='red', linewidth=1.5)
+      ax.set_title(title_label, fontsize=18)
+      ax.set_xlabel(x_label, fontsize=16)
+      ax.set_ylabel('AQI Value', fontsize=16)
+      ax.tick_params(axis='both', labelsize=14)
+      ax.grid(True)
+      
+      plt.tight_layout()
+      st.pyplot(fig)
     
   with col2:
     st.subheader('AQI Category Distribution') #st.markdown('#### AQI Category Distribution')
-    aqi_resampled = filtered_df['AQI_CN'].resample(resample_freq).max()
-    aqi_categories = [
-      (0, 50, 'Excellent'),
-      (51, 100, 'Good'),
-      (101, 150, 'Slight Pollution'),
-      (151, 200, 'Moderate Pollution'),
-      (201, 300, 'Heavy Pollution'),
-      (301, 500, 'Severe Pollution')
-    ]
-    kategori_counts = []
-    kategori_labels = []
-    for low, high, label in aqi_categories:
-        count = aqi_resampled[(aqi_resampled >= low) & (aqi_resampled <= high)].shape[0]
-        kategori_counts.append(count)
-        kategori_labels.append(f'{low}–{high}')
+    if not invalid_station and not invalid_pollutant:
+      filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
+      filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
+      filtered_df.set_index('datetime', inplace=True)
 
-    colors = ['green', 'yellow', 'orange', 'red', 'purple', 'maroon']
+      aqi_resampled = filtered_df['AQI_CN'].resample(resample_freq).max()
+      aqi_categories = [
+        (0, 50, 'Excellent'),
+        (51, 100, 'Good'),
+        (101, 150, 'Slight Pollution'),
+        (151, 200, 'Moderate Pollution'),
+        (201, 300, 'Heavy Pollution'),
+        (301, 500, 'Severe Pollution')
+      ]
+      kategori_counts = []
+      kategori_labels = []
+      for low, high, label in aqi_categories:
+          count = aqi_resampled[(aqi_resampled >= low) & (aqi_resampled <= high)].shape[0]
+          kategori_counts.append(count)
+          kategori_labels.append(f'{low}–{high}')
 
-    custom_legend = [
-      Patch(facecolor=color, label=label)
-      for (_, _, label), color in zip(aqi_categories, colors)
-    ]
+      colors = ['green', 'yellow', 'orange', 'red', 'purple', 'maroon']
 
-    fig, ax = plt.subplots(figsize=(10,6))
-    bars = ax.bar(kategori_labels, kategori_counts, color=colors)
-    ax.set_title(f'AQI Category Distribution ({selected_period})', fontsize=18)
-    ax.set_xlabel('AQI Value', fontsize=16)
-    ax.set_ylabel('Data Count', fontsize=16)
-    ax.tick_params(axis='both', labelsize=14)
-    ax.grid(axis='y', linestyle='--', alpha=0.5)
-    ax.legend(handles=custom_legend, title='AQI Categories', fontsize=14, title_fontsize=14)
+      custom_legend = [
+        Patch(facecolor=color, label=label)
+        for (_, _, label), color in zip(aqi_categories, colors)
+      ]
 
-    for idx, bar in enumerate(bars):
-      height = bar.get_height()
-      ax.text(bar.get_x() + bar.get_width()/2, height + 0.1, str(height),
-              ha='center', va='bottom', fontsize=12, fontweight='bold')
+      fig, ax = plt.subplots(figsize=(10,6))
+      bars = ax.bar(kategori_labels, kategori_counts, color=colors)
+      ax.set_title(f'AQI Category Distribution - {selected_period}', fontsize=18)
+      ax.set_xlabel('AQI Value', fontsize=16)
+      ax.set_ylabel('Data Count', fontsize=16)
+      ax.tick_params(axis='both', labelsize=14)
+      ax.grid(axis='y', linestyle='--', alpha=0.5)
+      ax.legend(handles=custom_legend, title='AQI Categories', fontsize=14, title_fontsize=14)
 
-    plt.tight_layout()
-    st.pyplot(fig)
+      for idx, bar in enumerate(bars):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, height + 0.1, str(height),
+                ha='center', va='bottom', fontsize=12, fontweight='bold')
+
+      plt.tight_layout()
+      st.pyplot(fig)
 
 with tab2:
   # st.subheader(':chart_with_upwards_trend: Pollutant Trends')
   col1, col2 = st.columns(2)
+  
   with col1:
-    #st.subheader('Pollutant Concentration Demographics') #st.markdown('#### Pollutant Concentration Demographics')
     st.subheader('Demographics by Station') #st.markdown('#### Demographics by Station')
-    if selected_stations and selected_pollutants:
+    if not invalid_station and not invalid_pollutant:
       filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
       pollutants_agg_df = filtered_df.groupby(by='station')[selected_pollutants].mean()
       pollutants_agg_df['total_average'] = pollutants_agg_df.sum(axis=1)
@@ -237,7 +253,7 @@ with tab2:
       fig, ax = plt.subplots(figsize=(10,6))
       pollutants_agg_df['total_average'].plot(kind='bar', color=colors, ax=ax)
 
-      ax.set_title('Total Average Pollutant Concentration per Station', fontsize=18)
+      ax.set_title('Average Pollutant Levels by Station', fontsize=18) #Total Average Pollutant Concentration per Station
       ax.set_xlabel('Station', fontsize=16)
       ax.set_ylabel('Total Average Concentration (µg/m³)', fontsize=16)
       ax.tick_params(axis='both', labelsize=14)
@@ -248,28 +264,23 @@ with tab2:
       st.pyplot(fig)
 
       df_to_display = pollutants_agg_df.drop(columns=['total_average'])
-      with st.expander('Lihat Data Rata-Rata per Stasiun'):
+      with st.expander('View Total Average Data per Station'):
         st.dataframe(df_to_display)
     
-    elif not selected_stations:
-      st.warning('Please select at least one station to continue.')
-
-    elif not selected_pollutants:
-      st.warning('Please select at least one pollutant type.')
-
   with col2:
     st.subheader('Pollutant Concentration Trend') #st.markdown('#### Pollutant Concentration Trend')
-    if selected_stations and selected_pollutants:      
+    if not invalid_station and not invalid_pollutant:      
       filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
       filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
       filtered_df.set_index('datetime', inplace=True)
 
       pollutant_resampled_df = filtered_df[selected_pollutants].resample(resample_freq).mean()
       x_label = 'Date and Time'
-      if selected_period == 'Hourly':
-        title_label = f'{selected_period} Pollutant Concentration Trend ({start_date.strftime('%d %b %Y')})'
+      
+      if selected_period == 'Hourly' and start_date == end_date:
+        title_label = f'Pollutant Concentration Trend - {selected_period}, {start_date.strftime('%d %b %Y')}'
       else:
-        title_label = f'{selected_period} Pollutant Concentration Trend ({start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')})'
+        title_label = f'Pollutant Concentration Trend - {selected_period}, {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}'
 
       pollutant_resampled_df['total_average'] = pollutant_resampled_df.sum(axis=1)
 
@@ -282,11 +293,11 @@ with tab2:
         ax.plot(
           pollutant_resampled_df.index, 
           pollutant_resampled_df['total_average'], 
-          label='All Pollutants Trend', 
+          label='All Pollutants', 
           color='black', 
           linewidth=2.5)
       else:
-        label = 'Selected Pollutants Trend' if len(selected_pollutants) > 1 else f'{selected_pollutants[0]} Trend'
+        label = 'Selected Pollutants' if len(selected_pollutants) > 1 else f'Tren {selected_pollutants[0]}'
         ax.plot(
           pollutant_resampled_df.index, 
           pollutant_resampled_df['total_average'], 
@@ -304,18 +315,13 @@ with tab2:
       plt.tight_layout()
       st.pyplot(fig)
 
-    elif not selected_stations:
-      st.warning('Please select at least one station to continue.')
-
-    elif not selected_pollutants:
-      st.warning('Please select at least one pollutant type.')
-
 with tab3:
   # st.subheader(':clock3: Diurnal Patterns')
   col1, col2 = st.columns(2)
+  
   with col1:
-    st.subheader('All Day') #st.markdown('#### Diurnal Pattern All Day')
-    if selected_stations and selected_pollutants:
+    st.subheader('All Day') #st.markdown('#### All Day')
+    if not invalid_station and not invalid_pollutant:
       filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
       filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
       filtered_df['hour'] = filtered_df['datetime'].dt.hour
@@ -330,37 +336,37 @@ with tab3:
       if start_date == end_date:
         if selected_pollutants_set == all_pollutants_set:
           filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
-          sns.lineplot(data=filtered_df, x='hour', y='total_pollutant', marker='o', ax=ax)
-          ax.set_title(f'Diurnal Pattern of Total Pollutant Concentration ({start_date})', fontsize=18)
+          sns.lineplot(data=filtered_df, x='hour', y='total_pollutant', marker='o', ax=ax, ci=None)
+          ax.set_title(f'Diurnal Profile of Total Pollutants – {start_date}', fontsize=18)
         elif len(selected_pollutants) > 1:
           filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
-          sns.lineplot(data=filtered_df, x='hour', y='total_pollutant', marker='o', ax=ax)
-          ax.set_title(f'Diurnal Pattern of Selected Pollutants Concentration ({start_date})', fontsize=18)
+          sns.lineplot(data=filtered_df, x='hour', y='total_pollutant', marker='o', ax=ax, ci=None)
+          ax.set_title(f'Diurnal Profile of Selected Pollutants – {start_date}', fontsize=18)
         else:
-          polutan = selected_pollutants[0]
-          sns.lineplot(data=filtered_df, x='hour', y=polutan, marker='o', ax=ax)
-          ax.set_title(f'Diurnal Pattern of {polutan} Concentration ({start_date})', fontsize=18)
+          pollutant = selected_pollutants[0]
+          sns.lineplot(data=filtered_df, x='hour', y=pollutant, marker='o', ax=ax, ci=None)
+          ax.set_title(f'Diurnal Profile of {pollutant} – {start_date}', fontsize=18)
       else:
         # Kondisi 1: Pilih Semua Polutan
         if selected_pollutants_set == all_pollutants_set:
           filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
           diurnal_avg = filtered_df.groupby('hour')['total_pollutant'].mean().reset_index()
           sns.lineplot(data=diurnal_avg, x='hour', y='total_pollutant', marker='o', ax=ax)
-          ax.set_title('Diurnal Pattern of All Pollutant Concentration', fontsize=18)
+          ax.set_title(f'Diurnal Profile of Total Pollutants – {start_date} to {end_date}', fontsize=18)
 
         # Kondisi 2: Pilih Beberapa Polutan
         elif len(selected_pollutants) > 1:
           filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
           diurnal_avg = filtered_df.groupby('hour')['total_pollutant'].mean().reset_index()
           sns.lineplot(data=diurnal_avg, x='hour', y='total_pollutant', marker='o', ax=ax)
-          ax.set_title('Diurnal Pattern of Selected Pollutant Concentration', fontsize=18)
+          ax.set_title(f'Diurnal Profile of Selected Pollutants – {start_date} to {end_date}', fontsize=18)
 
         # Kondisi 3: Pilih Satu Polutan
         else:
           pollutant = selected_pollutants[0]
           diurnal_avg = filtered_df.groupby('hour')[pollutant].mean().reset_index()
           sns.lineplot(data=diurnal_avg, x='hour', y=pollutant, marker='o', ax=ax)
-          ax.set_title(f'Diurnal Pattern of {pollutant} Concentration', fontsize=18)
+          ax.set_title(f'Diurnal Profile of {pollutant} – {start_date} to {end_date}', fontsize=18)
 
       # Format sumbu & tampilan
       ax.set_xlabel('Hour of Day', fontsize=16)
@@ -396,19 +402,13 @@ with tab3:
 
         plt.tight_layout()
         st.pyplot(fig_hm)
-        
-    elif not selected_stations:
-      st.warning('Please select at least one station to continue.')
 
-    elif not selected_pollutants:
-      st.warning('Please select at least one pollutant type.')
-  
   with col2:
-    st.subheader('Weekday vs. Weekend') #st.markdown('#### Diurnal Pattern Weekday vs. Weekend')
+    st.subheader('Weekday vs. Weekend') #st.markdown('#### Weekday vs. Weekend')
     # Kondisi Awal: Pilih Satu Hari
     if start_date == end_date:
-      st.info('Visualisasi Weekday vs Weekend tidak tersedia untuk 1 hari.')
-    elif selected_stations and selected_pollutants:
+      st.info('Weekday vs Weekend visualization is not available for a single day.')
+    elif not invalid_station and not invalid_pollutant:
       filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
       filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
       filtered_df['hour'] = filtered_df['datetime'].dt.hour
@@ -426,21 +426,21 @@ with tab3:
         filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
         diurnal_week = filtered_df.groupby(['hour', 'weekend'])['total_pollutant'].mean().reset_index()
         sns.lineplot(data=diurnal_week, x='hour', y='total_pollutant', hue='weekend', marker='o', ax=ax)
-        ax.set_title('Weekday vs Weekend: Diurnal Pattern of All Pollutant Concentration', fontsize=18)
+        ax.set_title(f'Weekday vs Weekend: Diurnal Profile of Total Pollutants - {start_date} to {end_date}', fontsize=18)
 
       # Kondisi 2: Pilih Beberapa Polutan
       elif len(selected_pollutants) > 1:
         filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
         diurnal_week = filtered_df.groupby(['hour', 'weekend'])['total_pollutant'].mean().reset_index()
         sns.lineplot(data=diurnal_week, x='hour', y='total_pollutant', hue='weekend', marker='o', ax=ax)
-        ax.set_title('Weekday vs Weekend: Diurnal Pattern of Selected Pollutant Concentration', fontsize=18)
+        ax.set_title(f'Weekday vs Weekend: Diurnal Profile of Selected Pollutants - {start_date} to {end_date}', fontsize=18)
 
         # Kondisi 3: Pilih Satu Polutan
       else:
         pollutant = selected_pollutants[0]
         diurnal_week = filtered_df.groupby(['hour', 'weekend'])[pollutant].mean().reset_index()
         sns.lineplot(data=diurnal_week, x='hour', y=pollutant, hue='weekend', marker='o', ax=ax)
-        ax.set_title(f'Weekday vs Weekend: Diurnal Pattern of {pollutant} Concentration', fontsize=18)
+        ax.set_title(f'Weekday vs Weekend: Diurnal Profile of {pollutant} - {start_date} to {end_date}', fontsize=18)
 
       ax.set_xlabel('Hour of Day', fontsize=16)
       ax.set_ylabel('Total Average Concentration (µg/m³)', fontsize=16)
@@ -484,9 +484,3 @@ with tab3:
 
         plt.tight_layout()
         st.pyplot(fig_hm)
-        
-    elif not selected_stations:
-      st.warning('Please select at least one station to continue.')
-
-    elif not selected_pollutants:
-      st.warning('Please select at least one pollutant type.')

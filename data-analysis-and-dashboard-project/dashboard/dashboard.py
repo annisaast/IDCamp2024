@@ -42,10 +42,7 @@ with st.sidebar:
     default = ['All Stations'],
     label_visibility = 'collapsed'
   )
-  if 'All Stations' in choose_stations:
-    selected_stations = stations  # Choose All Stations
-  else:
-    selected_stations = choose_stations  # Choose Selected Stations
+  selected_stations = stations if 'All Stations' in choose_stations else choose_stations
 
   st.sidebar.header(':fog: Pollutant')
   pollutants = ['PM2.5', 'PM10', 'SO2', 'NO2', 'CO', 'O3']
@@ -55,10 +52,7 @@ with st.sidebar:
     default = ['All Pollutants'],
     label_visibility = 'collapsed'
   )
-  if 'All Pollutants' in choose_pollutants:
-    selected_pollutants = pollutants  # Choose All Pollutants
-  else:
-    selected_pollutants = choose_pollutants  # Choose Selected Pollutants
+  selected_pollutants = pollutants if 'All Pollutants' in choose_pollutants else choose_pollutants
 
   st.sidebar.header(':stopwatch: Period')
   selected_period = st.selectbox(
@@ -89,6 +83,13 @@ if invalid_station:
 if invalid_pollutant:
   st.warning(':warning: Please select at least one pollutant type.')
 
+if not invalid_station and not invalid_pollutant:
+  filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
+  filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
+  filtered_df.set_index('datetime', inplace=True)
+else:
+  filtered_df = pd.DataFrame()
+  
 st.header('Air Quality Dashboard :mag:')
 
 st.subheader('Weather Condition')
@@ -156,13 +157,8 @@ with tab1:
   
   with col1:
     st.subheader('AQI Trend')
-    if not invalid_station and not invalid_pollutant:
-      filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
-      filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
-      filtered_df.set_index('datetime', inplace=True)
-
+    if not filtered_df.empty:
       aqi_resampled = filtered_df['AQI_CN'].resample(resample_freq).max()
-      x_label = 'Date and Time'
 
       if selected_period == 'Hourly' and start_date == end_date:
         title_label = f'{selected_period} AQI Trend - {start_date}'
@@ -180,7 +176,7 @@ with tab1:
 
       fig.update_layout(
         title = title_label,
-        xaxis_title = x_label,
+        xaxis_title = 'Date and Time',
         yaxis_title = 'AQI Value',
         template = 'plotly_white',
         margin = dict(l=20, r=20, t=50, b=20),
@@ -189,14 +185,10 @@ with tab1:
       )
 
       st.plotly_chart(fig, use_container_width=True)
-    
+        
   with col2:
     st.subheader('AQI Category Distribution')
-    if not invalid_station and not invalid_pollutant:
-      filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
-      filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
-      filtered_df.set_index('datetime', inplace=True)
-
+    if not filtered_df.empty:
       aqi_resampled = filtered_df['AQI_CN'].resample(resample_freq).max()
       aqi_categories = [
         (0, 50, 'Excellent'),
@@ -247,8 +239,7 @@ with tab2:
 
   with col1:
     st.subheader('Demographics by Station')
-    if not invalid_station and not invalid_pollutant:
-      filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
+    if not filtered_df.empty:
       pollutants_agg_df = filtered_df.groupby(by = 'station')[selected_pollutants].mean()
       pollutants_agg_df['total_average'] = pollutants_agg_df.sum(axis=1)
 
@@ -287,19 +278,15 @@ with tab2:
 
       st.plotly_chart(fig, use_container_width=True)
 
+      # Tabel data detail tanpa kolom total
       df_to_display = pollutants_agg_df.drop(columns=['total_average'])
       with st.expander('View Total Average Data per Station'):
         st.dataframe(df_to_display)
-
+    
   with col2:
     st.subheader('Pollutant Concentration Trend')
-    if not invalid_station and not invalid_pollutant:      
-      filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
-      filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
-      filtered_df.set_index('datetime', inplace=True)
-
+    if not filtered_df.empty:
       pollutant_resampled_df = filtered_df[selected_pollutants].resample(resample_freq).mean()
-      x_label = 'Date and Time'
       
       if selected_period == 'Hourly' and start_date == end_date:
         title_label = f'Pollutant Concentration Trend - {selected_period}, {start_date}'
@@ -324,6 +311,7 @@ with tab2:
           hovertemplate = '%{x}<br>Total Avg: %{y:.2f} µg/m³<extra></extra>'
         ))
       elif len(selected_pollutants) > 1:
+        # Choose Selected Pollutants
         pollutant_resampled_df['total_average'] = pollutant_resampled_df.sum(axis=1)
         fig.add_trace(go.Scatter(
           x = pollutant_resampled_df.index,
@@ -334,6 +322,7 @@ with tab2:
           hovertemplate = '%{x}<br>Total Avg: %{y:.2f} µg/m³<extra></extra>'
         ))
       else:
+        # Choose One Pollutant
         pollutant = selected_pollutants[0]
         fig.add_trace(go.Scatter(
           x = pollutant_resampled_df.index,
@@ -346,7 +335,7 @@ with tab2:
 
       fig.update_layout(
         title = title_label,
-        xaxis_title = x_label,
+        xaxis_title = 'Date and Time',
         yaxis_title = 'Total Average Concentration (µg/m³)',
         template = 'plotly_white',
         font = dict(size=14),
@@ -362,58 +351,36 @@ with tab3:
 
   with col1:
     st.subheader('All Day')
-    if not invalid_station and not invalid_pollutant:
-      filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
-      filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
-      filtered_df['hour'] = filtered_df['datetime'].dt.hour
-
+    if not filtered_df.empty:
       all_pollutants = ['PM2.5', 'PM10', 'SO2', 'NO2', 'CO', 'O3']
       selected_pollutants_set = set(selected_pollutants)
       all_pollutants_set = set(all_pollutants)
 
-      fig, ax = plt.subplots(figsize=(10,6))
+      df_diurnal = filtered_df.copy()
+      df_diurnal['datetime'] = pd.to_datetime(df_diurnal[['year', 'month', 'day', 'hour']])
 
-      # Initial Condition = Choose One Day
-      if start_date == end_date:
-        # Initial Condition 1: Choose All Pollutants One Day
-        if selected_pollutants_set == all_pollutants_set:
-          filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
-          y_data = filtered_df.groupby('hour')['total_pollutant'].mean()
-          title = f'Diurnal Profile of Total Pollutants – {start_date}'
+      # Condition 1: Choose All Pollutants
+      if selected_pollutants_set == all_pollutants_set:
+        pollutant_label = 'Total Pollutants'
+        df_diurnal['total_pollutant'] = df_diurnal[all_pollutants].sum(axis=1)
         
-        # Initial Condition 2: Choose Selected Pollutants One Day
-        elif len(selected_pollutants) > 1:
-          filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
-          y_data = filtered_df.groupby('hour')['total_pollutant'].mean()
-          title = f'Diurnal Profile of Selected Pollutants – {start_date}'
+      # Condition 2: Choose Selected Pollutants
+      elif len(selected_pollutants) > 1:
+        pollutant_label = 'Selected Pollutants'
+        df_diurnal['total_pollutant'] = df_diurnal[selected_pollutants].sum(axis=1)
         
-        # Initial Condition 3: Choose One Pollutants One Day        
-        else:
-          pollutant = selected_pollutants[0]
-          y_data = filtered_df.groupby('hour')[pollutant].mean()
-          title = f'Diurnal Profile of {pollutant} – {start_date}'
-      
+      # Condition 3: Choose One Pollutant
       else:
-        # Condition 1: Choose All Pollutants
-        if selected_pollutants_set == all_pollutants_set:
-          filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
-          diurnal_avg = filtered_df.groupby('hour')['total_pollutant'].mean().reset_index()
-          y_data = filtered_df.groupby('hour')['total_pollutant'].mean()
-          title = f'Diurnal Profile of Total Pollutants – {start_date} to {end_date}'
-
-        # Condition 2: Choose Selected Pollutants
-        elif len(selected_pollutants) > 1:
-          filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
-          diurnal_avg = filtered_df.groupby('hour')['total_pollutant'].mean().reset_index()
-          y_data = filtered_df.groupby('hour')['total_pollutant'].mean()
-          title = f'Diurnal Profile of Selected Pollutants – {start_date} to {end_date}'
-
-        # Condition 3: Choose Satu Pollutants
-        else:
-          pollutant = selected_pollutants[0]
-          diurnal_avg = filtered_df.groupby('hour')[pollutant].mean().reset_index()
-          y_data = filtered_df.groupby('hour')[pollutant].mean()
-          title = f'Diurnal Profile of {pollutant} – {start_date} to {end_date}'
+        pollutant = selected_pollutants[0]
+        pollutant_label = pollutant
+        df_diurnal['total_pollutant'] = df_diurnal[pollutant]
+      
+      if start_date == end_date:
+        title = f'Diurnal Profile of {pollutant_label} – {start_date}'
+      else:
+        title = f'Diurnal Profile of {pollutant_label} – {start_date} to {end_date}'
+      
+      y_data = df_diurnal.groupby('hour')['total_pollutant'].mean()
       
       fig = go.Figure()
       fig.add_trace(go.Scatter(
@@ -441,18 +408,11 @@ with tab3:
 
       # Heatmap: Hour vs Day of the Month
       with st.expander('View Heatmap: Hour vs Day of the Month'):
-        if 'total_pollutant' not in filtered_df.columns:
-          if selected_pollutants_set == all_pollutants_set:
-            filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
-          elif len(selected_pollutants) > 1:
-            filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
-          else:
-            pollutant = selected_pollutants[0]
-            filtered_df['total_pollutant'] = filtered_df[pollutant]
+        df_heat = df_diurnal.copy()
+        df_heat['day'] = df_heat['datetime'].dt.day
 
-        filtered_df['day'] = filtered_df['datetime'].dt.day
         heatmap_data = (
-          filtered_df
+          df_heat
           .groupby(['day', 'hour'])['total_pollutant']
           .mean()
           .unstack()
@@ -477,43 +437,43 @@ with tab3:
 
   with col2:
     st.subheader('Weekday vs. Weekend')
-    # Initial Condition: Choose One Day
     if start_date == end_date:
       st.info('Weekday vs Weekend visualization is not available for a single day.')
+    
     elif not invalid_station and not invalid_pollutant:
-      filtered_df = main_df[main_df['station'].isin(selected_stations)].copy()
-      filtered_df['datetime'] = pd.to_datetime(filtered_df[['year', 'month', 'day', 'hour']])
-      filtered_df['hour'] = filtered_df['datetime'].dt.hour
-      filtered_df['dayofweek'] = filtered_df['datetime'].dt.dayofweek
-      filtered_df['weekend'] = filtered_df['dayofweek'].apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
+      df_work = main_df[main_df['station'].isin(selected_stations)].copy()
+      df_work['datetime'] = pd.to_datetime(df_work[['year', 'month', 'day', 'hour']])
+      df_work['hour'] = df_work['datetime'].dt.hour
+      df_work['dayofweek'] = df_work['datetime'].dt.dayofweek
+      df_work['weekend'] = df_work['dayofweek'].apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
 
       all_pollutants = ['PM2.5', 'PM10', 'SO2', 'NO2', 'CO', 'O3']
       selected_pollutants_set = set(selected_pollutants)
       all_pollutants_set = set(all_pollutants)
 
-      fig, ax = plt.subplots(figsize=(10,6))
-
       # Condition 1: Choose All Pollutants
       if selected_pollutants_set == all_pollutants_set:
-        filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
-        diurnal_week = filtered_df.groupby(['hour', 'weekend'])['total_pollutant'].mean().reset_index()
-        title = f'Weekday vs Weekend: Diurnal Profile of Total Pollutants - {start_date} to {end_date}'
+        pollutant_label = 'Total Pollutants'
+        df_work['total_pollutant'] = df_work[all_pollutants].sum(axis=1)
         y_col = 'total_pollutant'
+        diurnal_week = df_work.groupby(['hour', 'weekend'])['total_pollutant'].mean().reset_index()
 
       # Condition 2: Choose Selected Pollutants
       elif len(selected_pollutants) > 1:
-        filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
-        diurnal_week = filtered_df.groupby(['hour', 'weekend'])['total_pollutant'].mean().reset_index()
-        title = f'Weekday vs Weekend: Diurnal Profile of Selected Pollutants - {start_date} to {end_date}'
+        pollutant_label = 'Selected Pollutants'
+        df_work['total_pollutant'] = df_work[selected_pollutants].sum(axis=1)
         y_col = 'total_pollutant'
+        diurnal_week = df_work.groupby(['hour', 'weekend'])['total_pollutant'].mean().reset_index()
 
-        # Condition 3: Choose One Pollutant
+      # Condition 3: Choose One Pollutant
       else:
         pollutant = selected_pollutants[0]
-        diurnal_week = filtered_df.groupby(['hour', 'weekend'])[pollutant].mean().reset_index()
-        title = f'Weekday vs Weekend: Diurnal Profile of {pollutant} - {start_date} to {end_date}'
+        pollutant_label = pollutant
         y_col = pollutant
-
+        diurnal_week = df_work.groupby(['hour', 'weekend'])[pollutant].mean().reset_index()
+      
+      title = f'Weekday vs Weekend: Diurnal Profile of {pollutant_label} - {start_date} to {end_date}'
+        
       fig = go.Figure()
       for day_type, group_df in diurnal_week.groupby('weekend'):
         if day_type == 'Weekday':
@@ -526,7 +486,8 @@ with tab3:
           y = group_df[y_col],
           mode = 'lines+markers',
           name = day_type,
-          marker = dict(size=8)
+          marker = dict(size=8),
+          line=dict(color=color)
       ))
 
       fig.update_layout(
@@ -553,21 +514,24 @@ with tab3:
             
       st.plotly_chart(fig, use_container_width=True)
     
-      # Heatmap: Jam vs Nama Hari
+      # Heatmap: Hour vs Day Name
       with st.expander('View Heatmap: Hour vs Day Name'):
-        if 'total_pollutant' not in filtered_df.columns:
+        df_heat = df_work.copy()
+        
+        if 'total_pollutant' not in df_heat.columns:
           if selected_pollutants_set == all_pollutants_set:
-            filtered_df['total_pollutant'] = filtered_df[all_pollutants].sum(axis=1)
+            df_heat['total_pollutant'] = df_heat[all_pollutants].sum(axis=1)
           elif len(selected_pollutants) > 1:
-            filtered_df['total_pollutant'] = filtered_df[selected_pollutants].sum(axis=1)
+            df_heat['total_pollutant'] = df_heat[selected_pollutants].sum(axis=1)
           else:
             pollutant = selected_pollutants[0]
-            filtered_df['total_pollutant'] = filtered_df[pollutant]
+            df_heat['total_pollutant'] = df_heat[pollutant]
 
-        filtered_df['day_name'] = filtered_df['datetime'].dt.day_name()
-        ordered_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        df_heat['day_name'] = df_heat['datetime'].dt.day_name()
+        ordered_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Onerday', 'Sunday']
+        
         heatmap_data = (
-          filtered_df
+          df_heat
           .groupby(['day_name', 'hour'])['total_pollutant']
           .mean()
           .unstack()
@@ -591,3 +555,4 @@ with tab3:
         )
 
         st.plotly_chart(fig_hm, use_container_width=True)
+    
